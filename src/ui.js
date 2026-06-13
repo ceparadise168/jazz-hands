@@ -69,6 +69,19 @@ const INSTRUMENTS = [
 const BPM_MIN = 60;
 const BPM_MAX = 160;
 
+// ── 靈敏度 0~100% 微調 ↔ dwell 毫秒 ──
+// 範圍 = DWELL_LEVELS 首尾 ms(最靈敏 ~ 最鈍);0% = 最靈敏端、100% = 最鈍端。
+// 文字檔位是滑桿上的整數%跳點(picksPct),滑桿可在其間連續微調。
+const DWELL_MS_MIN = DWELL_LEVELS[0].ms;
+const DWELL_MS_MAX = DWELL_LEVELS[DWELL_LEVELS.length - 1].ms;
+const pctToMs = (pct) => Math.round(DWELL_MS_MIN + (pct / 100) * (DWELL_MS_MAX - DWELL_MS_MIN));
+const msToPct = (ms) => Math.round(((ms - DWELL_MS_MIN) / (DWELL_MS_MAX - DWELL_MS_MIN)) * 100);
+/** 找出「目前 ms 是否正好落在某個文字檔位的%上」→ 回傳該 label,否則 '自訂'。 */
+function dwellLabelForPct(pct) {
+  const lv = DWELL_LEVELS.find((l) => msToPct(l.ms) === pct);
+  return lv ? lv.label : '自訂';
+}
+
 /** 狀態 → 底部提示左側的運作狀態文案(設計 §8 各情境)。 */
 const STATUS_TEXT = {
   idle: '點「開始」啟動鏡頭',
@@ -148,6 +161,138 @@ export function createUI({ root, onChange }) {
       select,
       h('span', { class: 'chev', text: '▾', 'aria-hidden': 'true' }),
     ]);
+  }
+
+  /**
+   * 靈敏度控制(換音 / 同音 兩段)合成單一可展開 pill:
+   *  - 文字檔位 chips = 快速選擇(靈敏 / 中 / 鈍 / 超鈍)。
+   *  - 0~100% 滑桿 = 精細微調(與 chips 同一個值;chips 在滑桿上對齊跳點)。
+   * 收合時 pill 顯示兩段摘要(換音檔位 · 同音檔位);展開為玻璃 popover。
+   * 變更只上拋 onChange({type:'dwellDiff'|'dwellSame', ms});與舊事件相容。
+   */
+  function makeSensitivityControl() {
+    const sections = [
+      { key: 'diff', title: '換音靈敏', hint: '切到不同音、多快發聲', ms: KEY_DWELL_DIFF_MS, event: 'dwellDiff' },
+      { key: 'same', title: '同音靈敏', hint: '連點同一個音、多快重觸', ms: KEY_DWELL_SAME_MS, event: 'dwellSame' },
+    ];
+
+    const summary = h('span', { class: 'v' });
+    const popover = h('div', { class: 'sens-pop', role: 'group', 'aria-label': '靈敏度微調' });
+    const state = {}; // key → { pct }
+
+    function updateSummary() {
+      summary.textContent = sections
+        .map((s) => dwellLabelForPct(state[s.key].pct))
+        .join(' · ');
+    }
+
+    // 先初始化兩段狀態(updateSummary 會同時讀兩段,須在首段 render 前就緒)。
+    for (const sec of sections) state[sec.key] = { pct: msToPct(sec.ms) };
+
+    for (const sec of sections) {
+      const chipEls = DWELL_LEVELS.map((lv) =>
+        h('button', {
+          type: 'button',
+          class: 'sens-chip',
+          'data-pct': String(msToPct(lv.ms)),
+          'data-ms': String(lv.ms),
+          text: lv.label,
+        }),
+      );
+      const slider = h('input', {
+        type: 'range',
+        class: 'sens-range',
+        min: '0',
+        max: '100',
+        step: '1',
+        'aria-label': sec.title + ' 微調(0~100%)',
+      });
+      const readout = h('span', { class: 'sens-read' });
+
+      function render() {
+        const { pct } = state[sec.key];
+        slider.value = String(pct);
+        readout.textContent = `${pct}% · ${dwellLabelForPct(pct)}`;
+        for (const c of chipEls) c.classList.toggle('on', Number(c.dataset.pct) === pct);
+        updateSummary();
+      }
+      function commit(pct, ms) {
+        state[sec.key].pct = pct;
+        render();
+        onChange({ type: sec.event, ms });
+      }
+
+      for (const c of chipEls) {
+        c.addEventListener('click', () => commit(Number(c.dataset.pct), Number(c.dataset.ms)));
+      }
+      slider.addEventListener('input', () => {
+        const pct = Number(slider.value);
+        commit(pct, pctToMs(pct));
+      });
+
+      popover.append(
+        h('div', { class: 'sens-sec' }, [
+          h('div', { class: 'sens-head' }, [
+            h('span', { class: 'sens-title', text: sec.title }),
+            h('span', { class: 'sens-hint', text: sec.hint }),
+          ]),
+          h('div', { class: 'sens-chips' }, chipEls),
+          h('div', { class: 'sens-sliderrow' }, [slider, readout]),
+        ]),
+      );
+      render();
+    }
+
+    const pill = h(
+      'div',
+      {
+        class: 'pill pill-control sens',
+        tabindex: '0',
+        'aria-haspopup': 'true',
+        'aria-expanded': 'false',
+        'aria-label': '靈敏度',
+      },
+      [
+        h('span', { class: 'k', text: '靈敏度' }),
+        summary,
+        h('span', { class: 'chev', text: '▾', 'aria-hidden': 'true' }),
+        popover,
+      ],
+    );
+
+    let open = false;
+    function onDocDown(e) {
+      if (!pill.contains(e.target)) setOpen(false);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    function setOpen(v) {
+      if (v === open) return;
+      open = v;
+      pill.classList.toggle('open', open);
+      pill.setAttribute('aria-expanded', String(open));
+      if (open) {
+        document.addEventListener('pointerdown', onDocDown, true);
+        document.addEventListener('keydown', onKey, true);
+      } else {
+        document.removeEventListener('pointerdown', onDocDown, true);
+        document.removeEventListener('keydown', onKey, true);
+      }
+    }
+    // 點 pill 本體(非 popover 內互動)= 切換展開
+    pill.addEventListener('click', (e) => {
+      if (popover.contains(e.target)) return;
+      setOpen(!open);
+    });
+    pill.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !popover.contains(e.target)) {
+        e.preventDefault();
+        setOpen(!open);
+      }
+    });
+
+    return pill;
   }
 
   // ── 頂部玻璃控制列(設計 §6)──
@@ -234,14 +379,8 @@ export function createUI({ root, onChange }) {
       },
     );
 
-    // 靈敏度:換音 / 同音 兩段(dwell 毫秒;越小越靈敏 → 越快發聲)
-    const dwellOptions = DWELL_LEVELS.map((d) => ({ value: String(d.ms), label: d.label }));
-    const diffPill = makeSelectPill('換音靈敏', dwellOptions, (v) => onChange({ type: 'dwellDiff', ms: Number(v) }), (el) => {
-      el.value = String(KEY_DWELL_DIFF_MS);
-    });
-    const samePill = makeSelectPill('同音靈敏', dwellOptions, (v) => onChange({ type: 'dwellSame', ms: Number(v) }), (el) => {
-      el.value = String(KEY_DWELL_SAME_MS);
-    });
+    // 靈敏度:換音 / 同音 兩段合一(文字 chips 快速選擇 + 0~100% 滑桿微調)
+    const sensPill = makeSensitivityControl();
 
     const controls = h('div', { class: 'controls' }, [
       scalePill,
@@ -249,8 +388,7 @@ export function createUI({ root, onChange }) {
       layoutPill,
       groovePill,
       instPill,
-      diffPill,
-      samePill,
+      sensPill,
     ]);
 
     topbar.replaceChildren(brand, controls);

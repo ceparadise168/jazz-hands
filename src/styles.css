@@ -368,6 +368,122 @@ body {
   cursor: pointer;
 }
 
+/* ---- 靈敏度:可展開 popover(文字 chips 快速選擇 + 0~100% 滑桿微調)---- */
+.pill.sens {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+.pill.sens.open {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.sens-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(12, 17, 30, 0.94);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  cursor: default;
+  white-space: normal;
+}
+.pill.sens.open .sens-pop {
+  display: flex;
+}
+.sens-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.sens-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sens-title {
+  font-weight: 700;
+  font-size: 13px;
+}
+.sens-hint {
+  color: var(--dim);
+  font-size: 11px;
+}
+.sens-chips {
+  display: flex;
+  gap: 6px;
+}
+.sens-chip {
+  flex: 1 1 0;
+  padding: 8px 0;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.sens-chip:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.sens-chip.on {
+  border-color: rgba(39, 224, 200, 0.6);
+  background: rgba(39, 224, 200, 0.16);
+  color: #d6fff7;
+}
+.sens-sliderrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sens-range {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+  cursor: pointer;
+}
+.sens-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--melody);
+  box-shadow: 0 0 8px rgba(39, 224, 200, 0.7);
+  cursor: pointer;
+}
+.sens-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--melody);
+  box-shadow: 0 0 8px rgba(39, 224, 200, 0.7);
+  cursor: pointer;
+}
+.sens-read {
+  min-width: 68px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===========================================================================
    底部提示列:狀態 chip + 圓點
    =========================================================================== */

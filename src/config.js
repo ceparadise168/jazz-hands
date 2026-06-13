@@ -42,11 +42,16 @@ export const KEY_HYSTERESIS_PX = 8;
 export const KEY_DWELL_DIFF_MS = 80;
 export const KEY_DWELL_SAME_MS = 30;
 
-/** 靈敏度 UI 檔位:label → dwell 毫秒(越小越靈敏)。「換音 / 同音」兩個控制共用此檔位表。 */
+/**
+ * 靈敏度 UI 檔位:label → dwell 毫秒(越小越靈敏)。「換音 / 同音」兩個控制共用此檔位表。
+ * 必須依 ms 由小到大排序:UI 的 0~100% 微調滑桿以本表首尾 ms 為範圍(0%=最靈敏、100%=最鈍),
+ * 文字檔位則是滑桿上的快速跳點。
+ */
 export const DWELL_LEVELS = [
   { id: 'fast', label: '靈敏', ms: 30 },
   { id: 'mid', label: '中', ms: 80 },
   { id: 'slow', label: '鈍', ms: 150 },
+  { id: 'slowest', label: '超鈍', ms: 250 },
 ];
 
 /**
