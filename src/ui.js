@@ -304,7 +304,7 @@ export function createUI({ root, onChange }) {
     ]);
     const brand = h('div', { class: 'brand' }, [
       liveBadge,
-      h('span', { class: 'nm', html: 'Hand<span>Sing</span>' }),
+      h('span', { class: 'nm', html: 'Mae<span>stro</span>' }),
     ]);
 
     // 音階 preset 下拉(選項讀 config.SCALE_PRESETS,不硬寫第二份清單)
