@@ -351,7 +351,7 @@ export function createRenderer({ canvas, disks, keyboard }) {
         ctx.globalAlpha = present ? 0.5 : 0.34; // idle:壓暗一階但保留彩虹色
       }
       ctx.fillStyle = c.color;
-      roundRect(c.x, c.top, c.w, c.h, 12);
+      roundRect(c.x, c.top, c.w, c.h, 9);
       ctx.fill();
       if (isOn) {
         ctx.shadowBlur = 0;
@@ -361,7 +361,7 @@ export function createRenderer({ canvas, disks, keyboard }) {
 
       ctx.lineWidth = isOn ? 3 + flash * 1.5 : 1.5;
       ctx.strokeStyle = isOn ? '#fff' : 'rgba(255,255,255,0.18)';
-      roundRect(c.x, c.top, c.w, c.h, 12);
+      roundRect(c.x, c.top, c.w, c.h, 9);
       ctx.stroke();
 
       // 音名標籤(亮鍵深字、暗鍵白字)
