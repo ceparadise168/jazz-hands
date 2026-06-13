@@ -32,6 +32,14 @@
     <div id="ui-overlay" class="ui-overlay"></div>
   </div>
 
+  <!--
+    MediaPipe Hands 為 UMD 函式庫(把建構子掛上全域 window.Hands),不是正規 ESM,
+    無法用 Vite 的 `import { Hands }`(打包後會是 undefined)。依官方用法從 CDN 以
+    <script> 載入;版本 pin 與 src/handTracking.js 的 ASSET_BASE 一致。
+  -->
+  <script defer crossorigin="anonymous"
+    integrity="sha384-oHwoZ9HyKv5ark5VOH+XWdbNfmhYtptAOBuV8plz6mAfXvTA6d8fULuYllWouEK2"
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -12,7 +12,9 @@
  * (設計 §2.1)。故 selfieMode 必須關閉,否則會與 mapper 的 (1-x) 反鏡像雙重翻轉。
  */
 
-import { Hands } from '@mediapipe/hands';
+// 注意:@mediapipe/hands 是 UMD 函式庫(把建構子掛上全域 window.Hands),不是正規 ESM。
+// 用 Vite 的 `import { Hands }` 打包後會得到 undefined(真機 new Hands() 直接爆),
+// 故改由 index.html 的 CDN <script> 載入,執行期於 start() 由 window.Hands 取得建構子。
 import { HAND_TRACKER, DETECT_EVERY_N_FRAMES } from './config.js';
 
 /**
@@ -54,7 +56,7 @@ const ASSET_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${MEDIAPIPE_VE
 export function createHandTracker({ video, onResults }) {
   const { indexTipLandmark } = HAND_TRACKER;
 
-  /** @type {Hands|null} MediaPipe Hands 實例(initialize 後可用) */
+  /** @type {any} MediaPipe Hands 實例(initialize 後可用;建構子來自全域 window.Hands) */
   let hands = null;
   /** @type {number|null} rAF handle;null 表示偵測迴圈未在跑 */
   let rafId = null;
@@ -127,7 +129,14 @@ export function createHandTracker({ video, onResults }) {
     if (running) return; // 已在跑,冪等
 
     try {
-      hands = new Hands({
+      // @mediapipe/hands 為 UMD,建構子掛在全域(由 index.html 的 CDN <script> 載入)。
+      const HandsCtor =
+        (typeof window !== 'undefined' && window.Hands) ||
+        (typeof globalThis !== 'undefined' && globalThis.Hands);
+      if (typeof HandsCtor !== 'function') {
+        throw new Error('MediaPipe Hands 函式庫尚未載入(CDN <script> 可能被網路或擴充套件阻擋)');
+      }
+      hands = new HandsCtor({
         // 把資產路徑導到 CDN(見 ASSET_BASE 註解)。
         locateFile: (file) => `${ASSET_BASE}/${file}`,
       });
