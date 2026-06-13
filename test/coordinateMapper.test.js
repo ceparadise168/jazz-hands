@@ -309,6 +309,22 @@ describe('coordinateMapper — 旋律 2D pad in-shape(§2.2 melody, 2026-06-13)'
   });
 });
 
+describe('coordinateMapper — 旋律 pizza 圓盤模式(kind:disk, 跟和弦一樣)', () => {
+  const PIZZA = melodyGeom('pizza');
+  const midRp = (PIZZA.rIn + PIZZA.rOut) / 2;
+  const step7 = 360 / PIZZA.slots;
+
+  it('指向某扇形 → ACTIVE 該音;回中心死區 → REST(無 dwell,跟和弦盤一致)', () => {
+    const m = createMapper({ disks: DISKS, keyboard: PIZZA });
+    const out = settle(m, [tipAt(PIZZA, step7 * 3 + step7 / 2, midRp)]); // 扇形 3(F)
+    expect(out.R.state).toBe('ACTIVE');
+    expect(out.R.zone).toBe(3);
+    const center = settle(m, [tipAt(PIZZA, 0, PIZZA.rIn * 0.4)]); // 中心死區
+    expect(center.R.state).toBe('REST');
+    expect(center.R.zone).toBe(null);
+  });
+});
+
 describe('coordinateMapper — reset', () => {
   it('reset clears state so next ACTIVE entry reports changed=true again', () => {
     const mapper = createMapper({ disks: DISKS, keyboard: MEL });

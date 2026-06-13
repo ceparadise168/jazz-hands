@@ -357,9 +357,12 @@ function createKeyboardMachine(kb, dwell) {
  */
 export function createMapper({ disks, keyboard }) {
   const machineL = createDiskMachine(disks.L);
-  let kbGeom = keyboard; // 可在執行期換排列模式(thirds / row)
+  let kbGeom = keyboard; // 可在執行期換排列模式(thirds / row / pizza)
   const dwell = { diffMs: KEY_DWELL_DIFF_MS, sameMs: KEY_DWELL_SAME_MS }; // 兩段靈敏度(setDwell 可調)
-  let machineR = createKeyboardMachine(kbGeom, dwell);
+  // pizza(kind:'disk')用和弦盤同款扇形 + 中心休息區機制;thirds/row(pads)用 in-shape + dwell。
+  const buildMelodyMachine = (kb) =>
+    kb.kind === 'disk' ? createDiskMachine(kb) : createKeyboardMachine(kb, dwell);
+  let machineR = buildMelodyMachine(kbGeom);
   const fallbackDt = 1 / NOMINAL_FPS;
 
   // 中線分盤遲滯:記住每隻手「上一幀歸屬的盤」,避免手在畫面中央時於 L/R 間逐幀跳動
@@ -449,7 +452,7 @@ export function createMapper({ disks, keyboard }) {
   /** 切換右手旋律排列模式(thirds / row):重建 keyboard 機制、沿用同一 dwell 設定。 */
   function setKeyboard(kb) {
     kbGeom = kb;
-    machineR = createKeyboardMachine(kb, dwell);
+    machineR = buildMelodyMachine(kb);
   }
 
   /** 即時調整兩段靈敏度(dwell 毫秒);傳 undefined 的維持不動。 */

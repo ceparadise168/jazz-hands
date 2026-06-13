@@ -226,6 +226,7 @@ export function createUI({ root, onChange }) {
       [
         { value: 'thirds', label: '三度' },
         { value: 'row', label: '鍵盤' },
+        { value: 'pizza', label: '披薩' },
       ],
       (v) => onChange({ type: 'layout', mode: v }),
       (el) => {

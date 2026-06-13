@@ -126,6 +126,7 @@ export const KEYBOARD = {
   modes: {
     // 2D 三度排列:上排 C E G B(0,2,4,6)、下排錯半格 D F A(1,3,5)
     thirds: {
+      kind: 'pads', // in-shape pad 群(keyboard machine + dwell)
       layout: [
         { row: 0, col: 0 }, // C
         { row: 1, col: 0 }, // D
@@ -145,6 +146,7 @@ export const KEYBOARD = {
     },
     // 單排鍵盤排列:C..B 由左到右(全 row 0)
     row: {
+      kind: 'pads',
       layout: [
         { row: 0, col: 0 }, // C
         { row: 0, col: 1 }, // D
@@ -161,6 +163,15 @@ export const KEYBOARD = {
       rowStep: 0,
       padW: 56,
       padH: 150, // 直立鍵
+    },
+    // 披薩圓盤:跟和弦盤一樣的扇形 + 中心休息區(用 createDiskMachine,而非 pad in-shape)
+    pizza: {
+      kind: 'disk',
+      cx: 950, // 右側圓盤中心(cx > 640 中線右側;rOut 210 → 邊緣 740..1160 在 16:10 安全區內)
+      cy: 380,
+      rOut: 210,
+      rIn: 73.5, // = rOut × 0.35(與和弦盤同死區比例)
+      slots: 7, // C D E F G A B
     },
   },
 };

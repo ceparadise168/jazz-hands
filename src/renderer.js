@@ -93,6 +93,8 @@ export function createRenderer({ canvas, disks, keyboard }) {
 
   // 右手旋律琴鍵的預建幾何(buildKeyboard 結果);2026-06-13 取代圓盤。
   let keyboardCache = null;
+  let melodyDiskCache = null; // pizza 模式:melody 當圓盤畫(drawDisk)
+  let melodyKind = 'pads'; // 'pads'(thirds/row)| 'disk'(pizza)
 
   /**
    * 預建一盤的靜態幾何(在設計空間算,draw 時統一套 cover 變換 → 不必重算)。
@@ -148,10 +150,17 @@ export function createRenderer({ canvas, disks, keyboard }) {
     return { kb, cells };
   }
 
+  /** 依排列模式設定 melody 快取(disk → drawDisk;pads → drawKeyboard)。 */
+  function setMelody(kb) {
+    melodyKind = kb.kind === 'disk' ? 'disk' : 'pads';
+    if (melodyKind === 'disk') melodyDiskCache = buildDisk('Rmel', kb);
+    else keyboardCache = buildKeyboard(kb);
+  }
+
   function prebuild() {
     diskCache.length = 0;
     diskCache.push(buildDisk('L', disks.L));
-    keyboardCache = buildKeyboard(keyboard);
+    setMelody(keyboard);
   }
 
   /**
@@ -695,12 +704,13 @@ export function createRenderer({ canvas, disks, keyboard }) {
     const present = !!(state && state.present);
     // 左盤(和弦圓盤)、右手(旋律琴鍵)
     drawDisk(diskCache[0], state ? state.L : null, present, anim.L);
-    drawKeyboard(keyboardCache, state ? state.R : null, present, anim.R);
+    if (melodyKind === 'disk') drawDisk(melodyDiskCache, state ? state.R : null, present, anim.R);
+    else drawKeyboard(keyboardCache, state ? state.R : null, present, anim.R);
   }
 
   /** 切換右手旋律排列模式:用新幾何重建 pad 快取(draw 立即生效)。 */
   function setKeyboard(kb) {
-    keyboardCache = buildKeyboard(kb);
+    setMelody(kb);
   }
 
   // 建構即預建幾何 + 量一次尺寸(若 canvas 已在 DOM)。
