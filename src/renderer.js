@@ -397,7 +397,7 @@ export function createRenderer({ canvas, disks, keyboard }) {
       ctx.textAlign = 'center';
       ctx.fillStyle = COLORS.dim;
       ctx.font = `600 13px ${FONT_STACK}`;
-      ctx.fillText('手指到彩色音上就響,離開就停', cx, kb.keyBottom + 32);
+      ctx.fillText('手指到彩色音柱就響,移到柱間空隙就停', cx, kb.keyBottom + 32);
       ctx.restore();
     }
   }
