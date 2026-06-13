@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>HandSing — 鏡頭手勢音樂遊戲</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <!--
+    舞台層疊(由底到頂):
+      1. <video>    相機原始畫面(JS 套水平鏡像 transform)
+      2. <canvas>   renderer 在此疊畫雙盤 / 游標 / 高亮 / 氣泡
+      3. .ui-*      ui.js 掛載的玻璃控制列 / 提示列 / 開始與錯誤覆蓋層
+  -->
+  <div class="app" id="app">
+    <div class="stage">
+      <!-- playsinline + muted:行動裝置與自動播放需求;mirror 由 styles.css/JS 控制 -->
+      <video id="cam-video" class="cam-video" playsinline muted autoplay></video>
+      <!-- 繪製解析度由 renderer 依 devicePixelRatio 設定,CSS 拉滿舞台 -->
+      <canvas id="scene" class="scene"></canvas>
+      <div class="vignette" aria-hidden="true"></div>
+    </div>
+
+    <!-- 頂部玻璃控制列:ui.js 注入內容(LIVE / 名稱 / scale / key / groove / 音色) -->
+    <header id="ui-topbar" class="ui-topbar"></header>
+
+    <!-- 底部提示列:ui.js 注入內容 -->
+    <footer id="ui-hint" class="ui-hint"></footer>
+
+    <!-- 覆蓋層:開始按鈕 / 載入態 / 錯誤卡片,ui.js 控制顯示 -->
+    <div id="ui-overlay" class="ui-overlay"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

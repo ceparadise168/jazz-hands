@@ -1,0 +1,582 @@
+/*
+  HandSing — 霓虹電音 Neon Arcade 基礎樣式。
+  配色與 config.js 的 COLORS 保持一致(設計 doc §6):
+    背景 #06080f / 和弦 #ff5fa2 / 旋律 #27e0c8 / 強調 #ffc24b
+  注意:CSS 變數為視覺層 SSOT 之一;Canvas 繪圖讀 config.js 的 COLORS。
+  兩者必須同步,改色請同時改這裡與 src/config.js。
+*/
+
+:root {
+  /* 核心配色 */
+  --bg: #06080f;
+  --chord: #ff5fa2;   /* 洋紅:左盤和弦 */
+  --melody: #27e0c8;  /* 青綠:右盤旋律 */
+  --accent: #ffc24b;  /* 琥珀:強調 */
+
+  /* 文字與輔助 */
+  --ink: #eef2ff;
+  --dim: #9aa6c7;
+  --glass: rgba(12, 17, 30, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  /* 發光 */
+  --glow-chord: 0 0 18px rgba(255, 95, 162, 0.55);
+  --glow-melody: 0 0 18px rgba(39, 224, 200, 0.55);
+
+  /* 字體 */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+    "Noto Sans TC", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ---- 舞台 ---- */
+.app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* 相機畫面:水平鏡像(像照鏡子,設計 §2.1)。object-fit cover 鋪滿舞台。 */
+.cam-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: #0a0f1d;
+}
+
+/* renderer 疊畫層,鋪滿舞台、不吃滑鼠事件 */
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 暗角 vignette,集中視覺焦點 */
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    75% 75% at 50% 42%,
+    rgba(10, 15, 29, 0) 55%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+}
+
+/* ---- 頂部玻璃控制列 ---- */
+.ui-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 8, 15, 0.85),
+    rgba(6, 8, 15, 0)
+  );
+}
+
+/* ---- 底部提示列 ---- */
+.ui-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 16px 20px 22px;
+  background: linear-gradient(
+    0deg,
+    rgba(6, 8, 15, 0.9),
+    rgba(6, 8, 15, 0)
+  );
+  font-size: 13.5px;
+  color: #cdd5ee;
+  align-items: center;
+}
+/* 提示句:在明亮相機畫面上仍清楚 —— 細微文字陰影 + 行高 */
+.ui-hint > span {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  line-height: 1.4;
+}
+
+/* ---- 覆蓋層(開始 / 載入 / 錯誤) ---- */
+.ui-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 預設隱藏;ui.js 顯示時加 .is-visible */
+  pointer-events: none;
+}
+
+.ui-overlay.is-visible {
+  pointer-events: auto;
+  background: rgba(6, 8, 15, 0.78);
+  backdrop-filter: blur(6px);
+  animation: overlay-fade 0.32s ease both;
+}
+@keyframes overlay-fade {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(6px); }
+}
+
+/* ===========================================================================
+   控制列內容(玻璃 pill / LIVE 徽章 / 滑動開關 / BPM / 下拉)— 對齊 mockup §6。
+   UI 疊在相機畫面上,pill / 卡片務必給足背景不透明度確保白字可讀。
+   =========================================================================== */
+
+/* ---- 品牌 + LIVE 徽章 ---- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .nm {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.brand .nm span {
+  color: var(--melody);
+}
+
+.live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 77, 109, 0.15);
+  border: 1px solid rgba(255, 77, 109, 0.4);
+  color: #ff9eb4;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+.live .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d6d;
+  box-shadow: 0 0 8px #ff4d6d;
+  animation: live-blink 1.4s infinite;
+}
+@keyframes live-blink {
+  50% { opacity: 0.3; }
+}
+/* 待機:灰、停脈動 */
+.live.is-idle {
+  background: rgba(154, 166, 199, 0.12);
+  border-color: rgba(154, 166, 199, 0.3);
+  color: var(--dim);
+}
+.live.is-idle .dot {
+  background: var(--dim);
+  box-shadow: none;
+  animation: none;
+}
+
+/* ---- 控制群 ---- */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ---- 玻璃 pill ---- */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+/* 互動 pill 的 hover/focus 提示:邊框微亮,讓「可點」可被發現 */
+.pill-control {
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.pill-control:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(18, 24, 40, 0.7);
+}
+.pill-control:focus-within {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.pill .k {
+  color: var(--dim);
+  font-size: 11px;
+}
+.pill .v {
+  font-weight: 700;
+  min-width: 26px;
+  text-align: center;
+}
+.pill .chev {
+  color: var(--dim);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+/* groove pill 開啟態:青綠高亮 */
+.pill.groove.on {
+  border-color: rgba(39, 224, 200, 0.5);
+  background: rgba(39, 224, 200, 0.12);
+}
+
+/* ---- pill 內的原生 <select> 去外觀 ---- */
+.pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 0 2px;
+  cursor: pointer;
+  outline: none;
+}
+.pill-select option {
+  /* 原生下拉清單背景由系統繪製,給深底白字 */
+  background: #0c111e;
+  color: var(--ink);
+}
+
+/* ---- 滑動開關(取代 mockup 的 ::after,改用真 checkbox + knob)---- */
+.tg {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.tg-input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.tg-knob {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(154, 166, 199, 0.35);
+  transition: background 0.15s ease;
+}
+.tg-knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #cdd5ee;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.tg-input:checked + .tg-knob {
+  background: rgba(39, 224, 200, 0.9);
+}
+.tg-input:checked + .tg-knob::after {
+  transform: translateX(15px);
+  background: #04201c;
+}
+.tg-input:focus-visible + .tg-knob {
+  outline: 2px solid var(--melody);
+  outline-offset: 2px;
+}
+
+/* ---- BPM range ---- */
+.bpm-range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 84px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+  cursor: pointer;
+}
+.bpm-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--melody);
+  box-shadow: 0 0 8px rgba(39, 224, 200, 0.7);
+  cursor: pointer;
+}
+.bpm-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--melody);
+  box-shadow: 0 0 8px rgba(39, 224, 200, 0.7);
+  cursor: pointer;
+}
+
+/* ===========================================================================
+   底部提示列:狀態 chip + 圓點
+   =========================================================================== */
+.ui-hint b {
+  color: #fff;
+}
+.hint-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+.hint-status {
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+.hint-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+/* 未偵測到手:琥珀脈動,主動把目光拉回「舉手到鏡頭前」 */
+.hint-status.s-no-hand {
+  border-color: rgba(255, 194, 75, 0.45);
+  background: rgba(255, 194, 75, 0.1);
+}
+.hint-status.s-no-hand .hint-status-dot {
+  box-shadow: 0 0 8px var(--accent);
+  animation: live-blink 1.3s infinite;
+}
+.hint-status.s-live {
+  border-color: rgba(39, 224, 200, 0.45);
+  background: rgba(39, 224, 200, 0.1);
+}
+.hint-status.s-live .hint-status-dot {
+  background: var(--melody);
+  box-shadow: 0 0 8px var(--melody);
+}
+.hint-status.s-loading .hint-status-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: live-blink 1.1s infinite;
+}
+.hint-status.s-no-hand .hint-status-dot {
+  background: var(--accent);
+}
+.hint-status.s-error .hint-status-dot {
+  background: #ff4d6d;
+  box-shadow: 0 0 8px #ff4d6d;
+}
+
+/* ===========================================================================
+   覆蓋層卡片(開始 / 錯誤)
+   =========================================================================== */
+.card {
+  position: relative;
+  width: min(440px, calc(100vw - 48px));
+  padding: 34px 32px 26px;
+  border-radius: 22px;
+  background: rgba(12, 17, 30, 0.82);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  text-align: center;
+  overflow: hidden;
+  animation: card-rise 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* 卡片頂部光暈緩慢漂移,給霓虹生命感 */
+.card-glow {
+  animation: glow-drift 6s ease-in-out infinite alternate;
+}
+@keyframes glow-drift {
+  from { transform: translateX(-6%); opacity: 0.85; }
+  to { transform: translateX(6%); opacity: 1; }
+}
+.card-glow {
+  position: absolute;
+  inset: -40% -40% auto -40%;
+  height: 200px;
+  background: radial-gradient(
+    50% 100% at 50% 0%,
+    rgba(255, 95, 162, 0.35),
+    rgba(39, 224, 200, 0.18) 45%,
+    transparent 75%
+  );
+  pointer-events: none;
+}
+.card-title {
+  position: relative;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+.card-title span {
+  color: var(--melody);
+}
+.card-lead {
+  position: relative;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+.card-icon {
+  font-size: 34px;
+  margin-bottom: 8px;
+}
+
+.steps {
+  position: relative;
+  list-style: none;
+  text-align: left;
+  display: grid;
+  gap: 8px;
+  margin: 0 auto 22px;
+  max-width: 300px;
+}
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #cdd5ee;
+}
+.steps li b {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(39, 224, 200, 0.16);
+  border: 1px solid rgba(39, 224, 200, 0.45);
+  color: var(--melody);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.btn-primary {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  padding: 13px 20px;
+  border: 0;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #06080f;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--chord), var(--accent) 55%, var(--melody));
+  box-shadow: 0 8px 24px rgba(255, 95, 162, 0.35), 0 0 18px rgba(39, 224, 200, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: 0 12px 30px rgba(255, 95, 162, 0.45), 0 0 24px rgba(39, 224, 200, 0.35);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.privacy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 16px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--dim);
+}
+.privacy b {
+  color: #cdd5ee;
+}
+
+/* ===========================================================================
+   尊重系統「減少動態」偏好:關閉裝飾性動畫(脈動 / 漂移 / 入場),
+   保留功能性即時回饋(Canvas 內手感由 JS 控,不在此規範)。
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .live .dot,
+  .hint-status-dot,
+  .card-glow,
+  .card,
+  .ui-overlay.is-visible {
+    animation: none !important;
+  }
+  .btn-primary,
+  .pill-control,
+  .hint-status {
+    transition: none !important;
+  }
+}
