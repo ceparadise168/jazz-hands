@@ -36,13 +36,21 @@ function keyCenterX(k) {
   const b = keyBoundsX(k, KEYBOARD);
   return (b.x0 + b.x1) / 2;
 }
-/** 琴鍵第 k 鍵「壓下發聲」位置(線下)→ 未鏡像 raw normalized。 */
-function kbPress(k) {
-  return { x: 1 - keyCenterX(k) / W, y: (KEYBOARD.pressY + 12) / H };
+/** 琴鍵帶垂直中線 y(設計空間像素)。 */
+const kbMidY = (KEYBOARD.keyTop + KEYBOARD.keyBottom) / 2;
+/** 在第 k 鍵「形狀內」(in-shape 發聲)→ 未鏡像 raw normalized。 */
+function kbInKey(k) {
+  return { x: 1 - keyCenterX(k) / W, y: kbMidY / H };
 }
-/** 琴鍵第 k 鍵「線上方瞄準(不發聲)」位置 → 未鏡像 raw normalized。 */
-function kbHover(k) {
-  return { x: 1 - keyCenterX(k) / W, y: (KEYBOARD.releaseY - 24) / H };
+/** 在第 k 鍵右側「間隔」(靜音)→ 未鏡像 raw normalized。 */
+function kbInGap(k) {
+  const segW = (KEYBOARD.x1 - KEYBOARD.x0) / KEYBOARD.keys;
+  const px = KEYBOARD.x0 + (k + 1) * segW; // 段邊界 = 間隔中心
+  return { x: 1 - px / W, y: kbMidY / H };
+}
+/** 在第 k 鍵「上方帶外」(靜音,供抬手跳音)→ 未鏡像 raw normalized。 */
+function kbAboveBand(k) {
+  return { x: 1 - keyCenterX(k) / W, y: (KEYBOARD.keyTop - 40) / H };
 }
 
 /** slot k 的角度中心(度)。 */
@@ -197,7 +205,7 @@ describe('coordinateMapper — left/right disk split (§2.1, mirrored view)', ()
 
   it('a tip in the screen-RIGHT half (pressed) drives R keyboard; L stays REST', () => {
     const mapper = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    const res = settle(mapper, [kbPress(4)]);
+    const res = settle(mapper, [kbInKey(4)]);
     expect(res.R.present).toBe(true);
     expect(res.R.state).toBe('ACTIVE');
     expect(res.R.zone).toBe(4);
@@ -207,7 +215,7 @@ describe('coordinateMapper — left/right disk split (§2.1, mirrored view)', ()
 
   it('two tips (one per half) drive chord disk + melody keyboard independently', () => {
     const mapper = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    const tips = [tipAt(DISKS.L, slotCenterDeg(1), midR), kbPress(5)];
+    const tips = [tipAt(DISKS.L, slotCenterDeg(1), midR), kbInKey(5)];
     const res = settle(mapper, tips);
     expect(res.L.state).toBe('ACTIVE');
     expect(res.L.zone).toBe(1);
@@ -226,49 +234,36 @@ describe('coordinateMapper — left/right disk split (§2.1, mirrored view)', ()
   });
 });
 
-describe('coordinateMapper — 旋律琴鍵 + 演奏線(§2.2 melody, 2026-06-13)', () => {
-  it('線上方 hover → REST(不發聲)、aim = 該鍵、present', () => {
+describe('coordinateMapper — 旋律琴鍵 in-shape(§2.2 melody, 2026-06-13)', () => {
+  it('在某鍵形狀內 → ACTIVE、zone = 該鍵、aim = 該鍵', () => {
     const m = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    const res = settle(m, [kbHover(3)]);
+    const res = settle(m, [kbInKey(3)]);
     expect(res.R.present).toBe(true);
-    expect(res.R.state).toBe('REST');
-    expect(res.R.zone).toBe(null);
+    expect(res.R.state).toBe('ACTIVE');
+    expect(res.R.zone).toBe(3);
     expect(res.R.aim).toBe(3);
   });
 
-  it('壓過演奏線 → ACTIVE、zone = 該鍵(發聲)', () => {
+  it('在鍵間「間隔」→ REST(靜音)', () => {
     const m = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    const res = settle(m, [kbPress(3)]);
-    expect(res.R.state).toBe('ACTIVE');
-    expect(res.R.zone).toBe(3);
+    const res = settle(m, [kbInGap(2)]); // 鍵 2 與鍵 3 之間
+    expect(res.R.present).toBe(true);
+    expect(res.R.state).toBe('REST');
+    expect(res.R.zone).toBe(null);
   });
 
-  it('壓下後水平移到別鍵 → zone 鎖定不變(無經過誤觸)', () => {
+  it('在鍵帶「上方外側」→ REST(靜音,供抬手跳音)', () => {
     const m = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    settle(m, [kbHover(2)]);
-    settle(m, [kbPress(2)]); // 壓下鍵 2
-    // 維持壓下(y 仍過線),x 平移到鍵 5
-    const moved = settle(m, [{ x: 1 - keyCenterX(5) / W, y: (KEYBOARD.pressY + 12) / H }]);
-    expect(moved.R.state).toBe('ACTIVE');
-    expect(moved.R.zone).toBe(2); // 鎖定鍵 2,不因水平移動換音
+    const res = settle(m, [kbAboveBand(4)]);
+    expect(res.R.state).toBe('REST');
+    expect(res.R.zone).toBe(null);
   });
 
-  it('抬回線上 → REST、aim 跟著新位置', () => {
+  it('鍵 → 間隔 → 相鄰鍵:中途間隔靜音、抵達才換音(無經過誤觸)', () => {
     const m = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    settle(m, [kbPress(4)]);
-    const lifted = settle(m, [kbHover(6)]);
-    expect(lifted.R.state).toBe('REST');
-    expect(lifted.R.zone).toBe(null);
-    expect(lifted.R.aim).toBe(6);
-  });
-
-  it('演奏線雙閾值:y 落在 release~press 之間維持上一狀態(不狂發)', () => {
-    const m = createMapper({ disks: DISKS, keyboard: KEYBOARD });
-    settle(m, [kbPress(3)]); // 先壓下
-    const bandY = (KEYBOARD.releaseY + KEYBOARD.pressY) / 2; // 遲滯帶內
-    const mid = settle(m, [{ x: 1 - keyCenterX(3) / W, y: bandY / H }]);
-    expect(mid.R.state).toBe('ACTIVE'); // 尚未抬過 releaseY → 維持發聲
-    expect(mid.R.zone).toBe(3);
+    expect(settle(m, [kbInKey(2)]).R.zone).toBe(2);
+    expect(settle(m, [kbInGap(2)]).R.state).toBe('REST');
+    expect(settle(m, [kbInKey(3)]).R.zone).toBe(3);
   });
 
   it('右半無手 → R REST、不 present', () => {

@@ -172,3 +172,35 @@ export function keyBoundsX(i, kb) {
   const w = (kb.x1 - kb.x0) / kb.keys;
   return { x0: kb.x0 + i * w, x1: kb.x0 + (i + 1) * w };
 }
+
+/**
+ * 第 i 個琴鍵的「視覺矩形」(等分後內縮 gap;設計空間像素)。in-shape 判定與 renderer 共用同一形狀。
+ * @param {number} i 鍵 index
+ * @param {{x0:number,x1:number,keys:number,gap:number,keyTop:number,keyBottom:number}} kb
+ * @returns {{x:number,y:number,w:number,h:number}} 鍵矩形
+ */
+export function keyRect(i, kb) {
+  const segW = (kb.x1 - kb.x0) / kb.keys;
+  const half = kb.gap / 2;
+  return { x: kb.x0 + i * segW + half, y: kb.keyTop, w: segW - kb.gap, h: kb.keyBottom - kb.keyTop };
+}
+
+/**
+ * 點落在哪個琴鍵形狀內(in-shape 機制核心):手在某鍵矩形內 → 該鍵;在間隔 / 帶上下外 → null(靜音)。
+ * margin>0 供遲滯用(已在某鍵時擴張其邊界,避免邊緣抖動進出)。鍵間 gap > 2×margin 確保不會同時屬於兩鍵。
+ * @param {{x:number,y:number}} pt 點(設計空間像素)
+ * @param {Object} kb config.KEYBOARD
+ * @param {number} [margin=0] 邊界外擴(像素)
+ * @returns {number|null} 鍵 index 或 null
+ */
+export function keyAtPoint(pt, kb, margin = 0) {
+  if (pt.y < kb.keyTop - margin || pt.y > kb.keyBottom + margin) return null;
+  const segW = (kb.x1 - kb.x0) / kb.keys;
+  const half = kb.gap / 2;
+  for (let i = 0; i < kb.keys; i++) {
+    const kx0 = kb.x0 + i * segW + half;
+    const kx1 = kb.x0 + (i + 1) * segW - half;
+    if (pt.x >= kx0 - margin && pt.x <= kx1 + margin) return i;
+  }
+  return null;
+}

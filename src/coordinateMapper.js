@@ -26,8 +26,7 @@ import {
   slotForAngle,
   angleMarginToBoundary,
   radiusOf,
-  keyForX,
-  keyBoundsX,
+  keyAtPoint,
 } from './geometry.js';
 import { ONE_EURO, HYSTERESIS_DEG, KEY_HYSTERESIS_PX } from './config.js';
 
@@ -237,25 +236,23 @@ function createDiskMachine(disk) {
   return { step, reset };
 }
 
-// ───────────────────────── 右手旋律:琴鍵 + 演奏線狀態機(2026-06-13) ─────────────────────────
+// ───────────────────────── 右手旋律:琴鍵 in-shape 狀態機(2026-06-13) ─────────────────────────
 
 /**
- * 建立右手旋律「琴鍵 + 演奏線」狀態機,取代圓盤(解決旋律跳音刮過中間音的問題)。
- * 輸出沿用 DiskState 形狀(state/zone/changed/tip/present)+ 額外 aim(瞄準鍵,供 renderer
- * 預覽);因此 app 的觸發 diff 完全沿用:HOVER → state REST(不發)、PRESS → state ACTIVE(發 zone)。
+ * 建立右手旋律「單排彩虹琴鍵」狀態機(in-shape 機制,取代圓盤與演奏線)。
+ * 輸出沿用 DiskState 形狀(state/zone/changed/tip/present)+ aim(= 目前所在鍵,供 renderer 高亮);
+ * 故 app 觸發 diff 完全沿用:在鍵內 → ACTIVE(發 zone)、間隔/帶外 → REST(靜音)。
  *
  * 機制(設計 §2.2 melody / config.KEYBOARD):
- *  - 水平 x → 瞄準鍵 aim(keyForX + 換鍵遲滯 KEY_HYSTERESIS_PX);僅未壓下時更新。
- *  - 垂直 y → 演奏線雙閾值:y≥pressY 壓下、y≤releaseY 抬起,中間維持(消除線附近狂發)。
- *  - 壓下瞬間鎖定當前 aim 為發音鍵 zone;壓下期間不更新 aim → 線下水平移動不換音(無經過誤觸)。
- * @param {Object} kb config.KEYBOARD(x0/x1/keys/lineY/pressY/releaseY…)
+ *  - 手指尖在某鍵「形狀內」(keyAtPoint)→ 發那個音;移到鍵間「間隔」或帶上下外 → 靜音。
+ *  - 鍵間留 gap 間隔 = 相鄰音的靜音緩衝;要跳音(如 C→E)把手抬離鍵帶(上/下)= 靜音,移過去再放回 → 不刮中間音。
+ *  - 邊界遲滯:已在某鍵時用擴張邊界(KEY_HYSTERESIS_PX)判斷是否仍在,消除鍵緣抖動進出。
+ * @param {Object} kb config.KEYBOARD(x0/x1/keys/gap/keyTop/keyBottom…)
  */
 function createKeyboardMachine(kb) {
   const fx = createOneEuro(ONE_EURO);
   const fy = createOneEuro(ONE_EURO);
-  let pressed = false; // 是否壓過演奏線(發聲中)
-  let aim = null; // 瞄準鍵 0..keys-1 | null
-  let zone = null; // 發音鍵(壓下時 = 鎖定的 aim;否則 null)
+  let zone = null; // 目前所在鍵(in-shape)= 發音鍵;null = 間隔/帶外(靜音)
   let state = 'REST';
 
   /**
@@ -270,8 +267,6 @@ function createKeyboardMachine(kb) {
     if (!tipPx) {
       fx.reset();
       fy.reset();
-      pressed = false;
-      aim = null;
       zone = null;
       state = 'REST';
       const changed = prevState !== state || prevZone !== zone;
@@ -282,44 +277,30 @@ function createKeyboardMachine(kb) {
     const sy = fy.filter(tipPx.y, dt);
     const tip = { x: sx, y: sy };
 
-    // 水平瞄準鍵:僅未壓下時更新(壓下期間鎖定 → 線下平移不換音)。
-    if (!pressed) {
-      const rawKey = keyForX(sx, kb);
-      if (aim === null) {
-        aim = rawKey;
-      } else if (rawKey !== aim) {
-        // 換鍵遲滯:須越過當前鍵邊界再多 KEY_HYSTERESIS_PX 才換(設計 §2.3.2 線性版)。
-        const b = keyBoundsX(aim, kb);
-        if (sx < b.x0 - KEY_HYSTERESIS_PX || sx > b.x1 + KEY_HYSTERESIS_PX) {
-          aim = rawKey;
-        }
-      }
+    // in-shape 判定 + 邊界遲滯:已在某鍵時用擴張邊界(margin)判斷是否「仍在」→ 黏住、不邊緣抖動;
+    // 否則用緊邊界重新偵測新鍵。間隔 / 帶上下外 → null(靜音)。
+    let key;
+    if (zone !== null && keyAtPoint(tip, kb, KEY_HYSTERESIS_PX) === zone) {
+      key = zone;
+    } else {
+      key = keyAtPoint(tip, kb, 0);
     }
 
-    // 演奏線雙閾值遲滯(y 向下為正):壓過 pressY 才發、抬過 releaseY 才停。
-    if (!pressed && sy >= kb.pressY) {
-      pressed = true; // 壓下 → 鎖定當前 aim 為發音鍵
-    } else if (pressed && sy <= kb.releaseY) {
-      pressed = false;
-    }
-
-    if (pressed) {
+    if (key !== null) {
       state = 'ACTIVE';
-      zone = aim;
+      zone = key;
     } else {
       state = 'REST';
       zone = null;
     }
 
     const changed = prevState !== state || prevZone !== zone;
-    return { state, zone, aim, changed, tip, present: true };
+    return { state, zone, aim: zone, changed, tip, present: true };
   }
 
   function reset() {
     fx.reset();
     fy.reset();
-    pressed = false;
-    aim = null;
     zone = null;
     state = 'REST';
   }

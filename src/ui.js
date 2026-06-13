@@ -230,8 +230,8 @@ export function createUI({ root, onChange }) {
     hint.replaceChildren(
       statusChip,
       h('span', { html: '👈 <b>左手</b>:指外圈一塊 = 換和弦' }),
-      h('span', { html: '👉 <b>右手</b>:移到鍵上方瞄準,<b>壓下</b> = 彈那個音' }),
-      h('span', { html: '✋ <b>抬回線上</b> = 安靜(換你唱)' }),
+      h('span', { html: '👉 <b>右手</b>:指到彩色音 = 彈那個音' }),
+      h('span', { html: '✋ 手<b>離開琴鍵</b> = 安靜(換你唱)' }),
       h('span', { html: '🎤 <b>邊唱邊伴奏</b>' }),
     );
   }
@@ -281,7 +281,7 @@ export function createUI({ root, onChange }) {
       h('ol', { class: 'steps' }, [
         h('li', { html: '<b>1</b> 允許使用鏡頭' }),
         h('li', { html: '<b>2</b> 舉手到畫面中、看到游標' }),
-        h('li', { html: '<b>3</b> 右手壓過演奏線,彈出旋律' }),
+        h('li', { html: '<b>3</b> 右手指到彩色琴鍵,彈出旋律' }),
       ]),
       startBtn,
       privacyNote(),

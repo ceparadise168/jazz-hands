@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as geometry from '../src/geometry.js';
-import { polar, radiusOf, angleOf, slotForAngle, isInDeadzone, angleMarginToBoundary, sectorPath, keyForX, keyBoundsX } from '../src/geometry.js';
+import { polar, radiusOf, angleOf, slotForAngle, isInDeadzone, angleMarginToBoundary, sectorPath, keyForX, keyBoundsX, keyRect, keyAtPoint } from '../src/geometry.js';
 
 // 浮點容差輔助
 const close = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -349,5 +349,48 @@ describe('keyForX / keyBoundsX — 旋律琴鍵線性對位(2026-06-13)', () => 
       const b = keyBoundsX(i, KB);
       expect(keyForX((b.x0 + b.x1) / 2, KB)).toBe(i);
     }
+  });
+});
+
+describe('keyRect / keyAtPoint — in-shape 判定(2026-06-13)', () => {
+  const KB = { x0: 664, x1: 1236, keys: 7, gap: 30, keyTop: 312, keyBottom: 452 };
+  const midY = (KB.keyTop + KB.keyBottom) / 2;
+
+  it('keyRect 內縮 gap、y 落在帶高範圍', () => {
+    const r = keyRect(0, KB);
+    const segW = (KB.x1 - KB.x0) / KB.keys;
+    expect(r.x).toBeCloseTo(KB.x0 + KB.gap / 2);
+    expect(r.w).toBeCloseTo(segW - KB.gap);
+    expect(r.y).toBe(KB.keyTop);
+    expect(r.h).toBe(KB.keyBottom - KB.keyTop);
+  });
+
+  it('鍵中央(帶內)→ 該鍵', () => {
+    for (let i = 0; i < KB.keys; i++) {
+      const r = keyRect(i, KB);
+      expect(keyAtPoint({ x: r.x + r.w / 2, y: midY }, KB)).toBe(i);
+    }
+  });
+
+  it('鍵間「間隔」→ null(靜音)', () => {
+    const segW = (KB.x1 - KB.x0) / KB.keys;
+    for (let i = 0; i < KB.keys - 1; i++) {
+      const gapX = KB.x0 + (i + 1) * segW; // 段邊界 = 間隔中心
+      expect(keyAtPoint({ x: gapX, y: midY }, KB)).toBe(null);
+    }
+  });
+
+  it('帶「上方 / 下方」外側 → null(靜音,供抬手跳音)', () => {
+    const r = keyRect(3, KB);
+    const cx = r.x + r.w / 2;
+    expect(keyAtPoint({ x: cx, y: KB.keyTop - 30 }, KB)).toBe(null);
+    expect(keyAtPoint({ x: cx, y: KB.keyBottom + 30 }, KB)).toBe(null);
+  });
+
+  it('margin(遲滯)把鍵邊界外擴:剛出鍵緣 6px,margin 10 仍算在鍵內', () => {
+    const r = keyRect(2, KB);
+    const justOutX = r.x + r.w + 6; // 鍵右緣外 6px(仍在間隔內)
+    expect(keyAtPoint({ x: justOutX, y: midY }, KB)).toBe(null); // 緊邊界:不在
+    expect(keyAtPoint({ x: justOutX, y: midY }, KB, 10)).toBe(2); // margin 10:黏住鍵 2
   });
 });

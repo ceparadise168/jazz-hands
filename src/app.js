@@ -16,7 +16,7 @@
  */
 
 import { CameraError } from './camera.js';
-import { DESIGN_VIEW, BPM, GROOVE_DEFAULT_ON, SLOTS } from './config.js';
+import { DESIGN_VIEW, BPM, GROOVE_DEFAULT_ON, SLOTS, KEYBOARD } from './config.js';
 
 /**
  * 建立 app(尚未啟動;呼叫 start() 才真正開相機 + 偵測 + 迴圈)。
@@ -94,7 +94,9 @@ export function createApp(deps) {
     melodyLabels = [];
     for (let k = 0; k < SLOTS; k++) {
       chordLabels.push(musicEngine.chordForSlot(k).name);
-      // melody 標籤顯示乾淨音名(去掉科學音高的八度數字),如 C4 → C。
+    }
+    // melody 為單排 7 鍵(C..B);標籤去掉科學音高的八度數字,如 C4 → C。
+    for (let k = 0; k < KEYBOARD.keys; k++) {
       melodyLabels.push(musicEngine.noteForSlot(k).name.replace(/-?\d+$/, ''));
     }
   }

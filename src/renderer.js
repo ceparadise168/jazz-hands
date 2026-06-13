@@ -14,7 +14,7 @@
  * 故 renderer 不再做鏡像 —— mapper 已把 MediaPipe 原始 x 反鏡像成「畫面上看到的位置」。
  */
 
-import { polar, sectorPath, keyBoundsX } from './geometry.js';
+import { polar, sectorPath, keyRect } from './geometry.js';
 import { DESIGN_VIEW, COLORS } from './config.js';
 
 /**
@@ -129,24 +129,23 @@ export function createRenderer({ canvas, disks, keyboard }) {
    * @param {Object} kb config.KEYBOARD
    */
   function buildKeyboard(kb) {
-    const { keys, keyTop, keyBottom } = kb;
-    const hue = ROLE_HUE[kb.role] || ROLE_HUE.melody;
-    const gap = 8; // 鍵間距(設計空間像素)
+    const { keys } = kb;
     const cells = new Array(keys);
     for (let i = 0; i < keys; i++) {
-      const b = keyBoundsX(i, kb);
+      const r = keyRect(i, kb); // 視覺鍵矩形(與 mapper 的 in-shape 判定同一形狀)
       cells[i] = {
         i,
-        x: b.x0 + gap / 2,
-        w: b.x1 - b.x0 - gap,
-        cx: (b.x0 + b.x1) / 2,
-        top: keyTop,
-        bottom: keyBottom,
-        h: keyBottom - keyTop,
-        labelY: keyBottom - 24, // 標籤靠鍵底
+        x: r.x,
+        w: r.w,
+        cx: r.x + r.w / 2,
+        cy: r.y + r.h / 2,
+        top: r.y,
+        bottom: r.y + r.h,
+        h: r.h,
+        color: (kb.keyColors && kb.keyColors[i]) || kb.color, // 彩虹色 C..B
       };
     }
-    return { kb, hue, cells, lineY: kb.lineY };
+    return { kb, cells };
   }
 
   function prebuild() {
@@ -312,24 +311,23 @@ export function createRenderer({ canvas, disks, keyboard }) {
   }
 
   /**
-   * 畫右手旋律琴鍵 + 演奏線 + 游標 + 氣泡(2026-06-13 取代圓盤)。
-   * 互動視覺:暗鍵 = 沒發聲;瞄準鍵(aim,hover)= 亮一階預覽;發音鍵(zone,壓下)= 爆亮 + glow。
-   * 演奏線橫貫鍵頂;游標在「線上方」空心(瞄準)、「壓下」實心發光,清楚回饋線上/線下。
+   * 畫右手旋律「單排彩虹琴鍵」+ 游標 + 氣泡(2026-06-13 in-shape 版,無演奏線)。
+   * 暗鍵 = 沒發聲但仍顯彩虹色(讓你看顏色瞄準);發音鍵(zone,in-shape)= 該色爆亮 + glow。
+   * 游標在鍵內 = 染該鍵色發光、在間隔/帶外 = 白色空心(提示沒聲音)。
    * @param {Object} cache buildKeyboard 結果
    * @param {DiskRenderState & {aim?:number|null}} ds 該手本幀狀態
    * @param {boolean} present 是否偵測到任何手
    * @param {Object} a anim.R 瞬態動畫狀態
    */
   function drawKeyboard(cache, ds, present, a) {
-    const { kb, hue, cells, lineY } = cache;
-    const { keys, color } = kb;
-    const zone = ds && typeof ds.zone === 'number' ? ds.zone : null; // 發音鍵(壓下)
-    const aim = ds && typeof ds.aim === 'number' ? ds.aim : null; // 瞄準鍵(hover)
+    const { kb, cells } = cache;
+    const { keys } = kb;
+    const zone = ds && typeof ds.zone === 'number' ? ds.zone : null; // in-shape 發音鍵
     const active = !!(ds && ds.active);
     const slotLabels = (ds && ds.slotLabels) || null;
     const cx = (kb.x0 + kb.x1) / 2;
 
-    // 瞬態動畫(沿用圓盤:換鍵 attack flash、氣泡入場、sustain 呼吸)
+    // 瞬態動畫(換鍵 attack flash、氣泡入場、sustain 呼吸)
     if (active && zone != null && (zone !== a.lastZone || !a.lastActive)) a.attackAt = nowMs;
     if (active && zone != null && (zone !== a.bubbleZone || !a.lastActive)) {
       a.bubbleZone = zone;
@@ -340,107 +338,82 @@ export function createRenderer({ canvas, disks, keyboard }) {
     const flash = active ? Math.max(0, 1 - (nowMs - a.attackAt) / 220) : 0;
     const breathe = active ? 0.5 + 0.5 * Math.sin(nowMs / 360) : 0;
 
-    // 1) 每個鍵
+    // 彩虹鍵(暗鍵仍顯色以利瞄準;發音鍵該色爆亮 + glow)
     for (let i = 0; i < keys; i++) {
       const c = cells[i];
-      const h = hue.a + (hue.b - hue.a) * (keys > 1 ? i / (keys - 1) : 0);
-      const isPlaying = active && i === zone;
-      const isAim = !active && i === aim; // 壓下時不再顯示瞄準預覽,避免與發音鍵混淆
-
+      const isOn = active && i === zone;
       ctx.save();
-      if (isPlaying) {
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 22 + breathe * 8 + flash * 22;
-        ctx.fillStyle = `hsl(${h}, 90%, ${62 + flash * 14}%)`;
-      } else if (isAim) {
-        ctx.fillStyle = `hsl(${h}, 70%, 52%)`; // 瞄準:亮一階預覽
+      if (isOn) {
+        ctx.shadowColor = c.color;
+        ctx.shadowBlur = 22 + breathe * 8 + flash * 24;
+        ctx.globalAlpha = 1;
       } else {
-        ctx.fillStyle = `hsl(${h}, 55%, ${present ? (i % 2 ? 30 : 36) : 24}%)`;
+        ctx.globalAlpha = present ? 0.5 : 0.34; // idle:壓暗一階但保留彩虹色
       }
-      roundRect(c.x, c.top, c.w, c.h, 10);
+      ctx.fillStyle = c.color;
+      roundRect(c.x, c.top, c.w, c.h, 12);
       ctx.fill();
-      if (isPlaying) {
+      if (isOn) {
         ctx.shadowBlur = 0;
-        ctx.fill(); // 再填飽和
+        ctx.fill();
       }
       ctx.restore();
 
-      // 邊框
-      ctx.lineWidth = isPlaying ? 3 + flash * 1.5 : isAim ? 2 : 1.5;
-      ctx.strokeStyle = isPlaying ? '#fff' : isAim ? 'rgba(255,255,255,0.7)' : 'rgba(6,9,18,0.6)';
-      roundRect(c.x, c.top, c.w, c.h, 10);
+      ctx.lineWidth = isOn ? 3 + flash * 1.5 : 1.5;
+      ctx.strokeStyle = isOn ? '#fff' : 'rgba(255,255,255,0.18)';
+      roundRect(c.x, c.top, c.w, c.h, 12);
       ctx.stroke();
 
-      // 鍵標籤(音名)
+      // 音名標籤(亮鍵深字、暗鍵白字)
       if (slotLabels && slotLabels[i] != null) {
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        if (isPlaying) {
+        if (isOn) {
           ctx.font = `800 22px ${FONT_STACK}`;
           ctx.fillStyle = '#06080f';
         } else {
-          ctx.font = `700 17px ${FONT_STACK}`;
-          ctx.fillStyle = isAim ? '#06121a' : 'rgba(255,255,255,0.9)';
+          ctx.font = `700 18px ${FONT_STACK}`;
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
         }
-        ctx.fillText(slotLabels[i], c.cx, c.labelY);
+        ctx.fillText(slotLabels[i], c.cx, c.cy);
         ctx.restore();
       }
     }
 
-    // 2) 演奏線(橫貫鍵頂;發光虛線 + MELODY 標)
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(kb.x0, lineY);
-    ctx.lineTo(kb.x1, lineY);
-    ctx.setLineDash([10, 8]);
-    ctx.lineDashOffset = -(nowMs / 80) % 18;
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 10;
-    ctx.globalAlpha = present ? 0.9 : 0.6;
-    ctx.stroke();
-    ctx.restore();
-    ctx.save();
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = color;
-    ctx.font = `800 12px ${FONT_STACK}`;
-    drawTracked(kb.hubLabel || 'MELODY', cx, lineY - 12, 2);
-    ctx.restore();
-
-    // 3) 游標(線上方=空心瞄準;壓下=實心發光)
+    // 游標(在鍵內=染該鍵色發光;間隔/帶外=白色空心,提示沒聲音)
     if (ds && ds.tip) {
-      drawKeyboardCursor(ds.tip, active, color);
+      drawKeyboardCursor(ds.tip, active, zone != null ? cells[zone].color : null);
     }
 
-    // 4) 發聲氣泡(壓下時,發音鍵上方)
+    // 發聲氣泡(發音鍵上方)
     if (active && ds && ds.label && zone != null) {
-      drawBubbleAt(cells[zone].cx, kb.keyTop - 30, color, ds.label, a, breathe);
+      drawBubbleAt(cells[zone].cx, kb.keyTop - 30, cells[zone].color, ds.label, a, breathe);
     }
 
-    // 5) idle 引導(無手時)
+    // idle 引導(無手時)
     if (!present) {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.fillStyle = COLORS.dim;
       ctx.font = `600 13px ${FONT_STACK}`;
-      ctx.fillText('手移到鍵上方 → 壓過線發聲', cx, kb.keyBottom + 30);
+      ctx.fillText('手指到彩色音上就響,離開就停', cx, kb.keyBottom + 32);
       ctx.restore();
     }
   }
 
   /**
-   * 旋律琴鍵游標:壓下(active)=實心發光圈 + 擴散光環;線上方=空心白圈(瞄準)。
+   * 旋律琴鍵游標:在鍵內(active+color)= 該鍵色實心發光 + 擴散光環;間隔/帶外 = 白色空心(沒聲音)。
    * @param {{x:number,y:number}} tip 設計空間像素
-   * @param {boolean} active 是否壓下發聲中
-   * @param {string} color 旋律主色
+   * @param {boolean} active 是否在某鍵內(發聲中)
+   * @param {string|null} color 該鍵色(不在鍵內為 null)
    */
   function drawKeyboardCursor(tip, active, color) {
+    const on = active && !!color;
     ctx.save();
-    if (active) {
+    if (on) {
       const t = (nowMs / 700) % 1; // 擴散光環
-      const ringR = 26 + t * 20;
+      const ringR = 24 + t * 20;
       ctx.beginPath();
       ctx.arc(tip.x, tip.y, ringR, 0, Math.PI * 2);
       ctx.lineWidth = 2;
@@ -451,20 +424,20 @@ export function createRenderer({ canvas, disks, keyboard }) {
     }
     // 外環
     ctx.beginPath();
-    ctx.arc(tip.x, tip.y, 26, 0, Math.PI * 2);
+    ctx.arc(tip.x, tip.y, 22, 0, Math.PI * 2);
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = active ? color : 'rgba(255,255,255,0.95)';
-    if (active) {
+    ctx.strokeStyle = on ? color : 'rgba(255,255,255,0.92)';
+    if (on) {
       ctx.shadowColor = color;
       ctx.shadowBlur = 14;
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // 內圈(壓下實心、hover 半透明)
+    // 內圈(在鍵內實心、否則半透明)
     ctx.beginPath();
-    ctx.arc(tip.x, tip.y, 14, 0, Math.PI * 2);
-    ctx.globalAlpha = active ? 0.9 : 1;
-    ctx.fillStyle = active ? color : 'rgba(255,255,255,0.2)';
+    ctx.arc(tip.x, tip.y, 12, 0, Math.PI * 2);
+    ctx.globalAlpha = on ? 0.9 : 1;
+    ctx.fillStyle = on ? color : 'rgba(255,255,255,0.2)';
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1.5;
@@ -473,7 +446,7 @@ export function createRenderer({ canvas, disks, keyboard }) {
     // 中心點
     ctx.beginPath();
     ctx.arc(tip.x, tip.y, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = active ? '#06080f' : '#fff';
+    ctx.fillStyle = on ? '#06080f' : '#fff';
     ctx.fill();
     ctx.restore();
   }

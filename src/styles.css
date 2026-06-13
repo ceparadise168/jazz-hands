@@ -222,7 +222,7 @@ body {
 .controls {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -231,12 +231,13 @@ body {
 .pill {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   background: var(--glass);
   border: 1px solid var(--glass-border);
-  padding: 7px 12px;
+  padding: 11px 18px;
+  min-height: 44px; /* 觸控目標(原 7px padding 太小、難按) */
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: 14px;
   backdrop-filter: blur(8px);
   white-space: nowrap;
 }
@@ -253,7 +254,7 @@ body {
 }
 .pill .k {
   color: var(--dim);
-  font-size: 11px;
+  font-size: 12.5px;
 }
 .pill .v {
   font-weight: 700;
@@ -281,8 +282,8 @@ body {
   color: var(--ink);
   font: inherit;
   font-weight: 700;
-  font-size: 12.5px;
-  padding: 0 2px;
+  font-size: 14px;
+  padding: 2px 4px;
   cursor: pointer;
   outline: none;
 }

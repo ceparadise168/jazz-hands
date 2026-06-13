@@ -101,16 +101,16 @@ export const DISKS = {
  *  - cx:區域中心,供「螢幕左右位置分盤」用(與左盤中線一致)。
  */
 export const KEYBOARD = {
-  cx: 950,
-  x0: 660,
-  x1: 1240,
-  keys: SLOTS,
-  keyTop: 300,
-  keyBottom: 560,
-  lineY: 300,
-  pressY: 332,
-  releaseY: 288,
-  color: COLORS.melody,
+  cx: 950, // 區域中心(螢幕左右分盤用,與左盤中線一致)
+  x0: 664,
+  x1: 1236,
+  keys: 7, // C D E F G A B 單排(與左盤和弦的 8 塊脫鉤)
+  gap: 30, // 鍵間「靜音間隔」(設計空間像素);in-shape 機制靠它分隔相鄰音
+  keyTop: 312, // 單排琴鍵帶 上緣
+  keyBottom: 452, // 下緣(高 140;帶的上/下外側 = 靜音「跳音高速公路」)
+  // 彩虹對應 C..B:紅 橙 黃 綠 藍 靛 紫(2026-06-13 真機回饋)
+  keyColors: ['#ff5a5a', '#ff9f43', '#ffd93d', '#4cd964', '#4d8cff', '#7b6cff', '#c061ff'],
+  color: COLORS.melody, // 主色(游標 / fallback)
   role: 'melody',
   hubLabel: 'MELODY',
 };
