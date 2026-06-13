@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers — 純靜態資產部署(static assets only,無 Worker script)。
+  // 明確指定 assets 目錄,讓 `wrangler deploy` 直接發布 Vite build 產出的 dist/,
+  // 不觸發需要 Vite≥6 的框架自動配置。
+  "name": "jazz-hands",
+  "compatibility_date": "2025-01-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
