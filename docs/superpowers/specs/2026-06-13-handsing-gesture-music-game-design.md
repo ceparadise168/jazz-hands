@@ -1,8 +1,8 @@
-# HandSing — 鏡頭手勢音樂遊戲 · 原型概念設計
+# Maestro — 鏡頭手勢音樂遊戲 · 原型概念設計
 
 - **日期**:2026-06-13
 - **狀態**:設計已 approved(使用者 LGTM),作為原型實作的 single source of truth
-- **Codename**:`HandSing`(暫定,可改)
+- **Codename**:`Maestro`(暫定,可改)
 - **作者**:Eric × Claude (brainstorming session)
 
 ---
@@ -302,5 +302,5 @@ video frame
 - 和弦盤的具體選擇與排列(目前 C 大調 8 顆;可換成某首歌的進行)。
 - 五聲音階跨度(目前 1.6 八度)。
 - 自動伴奏節奏型的具體感覺(分解 / 刷弦 / Bossa…)。
-- 產品名(`HandSing` 暫定)。
+- 產品名(`Maestro` 暫定)。
 - 防誤觸三參數的實測微調值。

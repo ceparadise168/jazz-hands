@@ -1,9 +1,9 @@
 {
-  "name": "handsing",
+  "name": "maestro",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "HandSing — 鏡頭手勢音樂遊戲(左手和弦盤 + 右手五聲音階盤,純前端)",
+  "description": "Maestro — 鏡頭手勢音樂遊戲(左手和弦盤 + 右手五聲音階盤,純前端)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

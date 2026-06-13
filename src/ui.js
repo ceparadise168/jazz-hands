@@ -448,9 +448,9 @@ export function createUI({ root, onChange }) {
       onStart();
     });
 
-    const card = h('div', { class: 'card card-start', role: 'dialog', 'aria-label': 'HandSing 開始' }, [
+    const card = h('div', { class: 'card card-start', role: 'dialog', 'aria-label': 'Maestro 開始' }, [
       h('div', { class: 'card-glow', 'aria-hidden': 'true' }),
-      h('h1', { class: 'card-title', html: 'Hand<span>Sing</span>' }),
+      h('h1', { class: 'card-title', html: 'Mae<span>stro</span>' }),
       h('p', { class: 'card-lead', text: '左手換和弦 · 右手指旋律 · 邊唱邊即興伴奏' }),
       h('ol', { class: 'steps' }, [
         h('li', { html: '<b>1</b> 允許使用鏡頭' }),

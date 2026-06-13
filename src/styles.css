@@ -1,5 +1,5 @@
 /*
-  HandSing — 霓虹電音 Neon Arcade 基礎樣式。
+  Maestro — 霓虹電音 Neon Arcade 基礎樣式。
   配色與 config.js 的 COLORS 保持一致(設計 doc §6):
     背景 #06080f / 和弦 #ff5fa2 / 旋律 #27e0c8 / 強調 #ffc24b
   注意:CSS 變數為視覺層 SSOT 之一;Canvas 繪圖讀 config.js 的 COLORS。

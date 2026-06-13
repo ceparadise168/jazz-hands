@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-// HandSing 純前端原型。Vite 預設 root = 專案根、index.html 為入口。
+// Maestro 純前端原型。Vite 預設 root = 專案根、index.html 為入口。
 // MediaPipe Hands 與 Tone.js 走 npm 依賴,Vite 自動打包。
 export default defineConfig({
   server: {
