@@ -1,0 +1,21 @@
+# Brainstorming visual companion scratch
+.superpowers/
+.playwright-mcp/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.log
+.vscode/
+.idea/
