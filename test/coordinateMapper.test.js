@@ -245,6 +245,13 @@ describe('coordinateMapper — 旋律 2D pad in-shape(§2.2 melody, 2026-06-13)'
     expect(res.R.aim).toBe(3);
   });
 
+  it('第 8 鍵(高八度 C,index 7)可達 → ACTIVE、zone = 7(回歸:高 C 不可消失)', () => {
+    const m = createMapper({ disks: DISKS, keyboard: MEL });
+    const res = settle(m, [kbInKey(7)]);
+    expect(res.R.state).toBe('ACTIVE');
+    expect(res.R.zone).toBe(7);
+  });
+
   it('快速經過(停留 < dwell)不發聲;停留夠久才確認發聲', () => {
     const m = createMapper({ disks: DISKS, keyboard: MEL });
     const tip = kbInKey(3);
@@ -348,6 +355,24 @@ describe('coordinateMapper — 旋律 pizza 圓盤模式(kind:disk, 扇形 + 中
     expect(res.R.state).toBe('ACTIVE');
     expect(res.R.zone).toBe(3);
   });
+});
+
+describe('melody 排列 — 8 鍵都留在 16:10 安全區內(回歸:加高八度 C 後最右鍵不可被裁切)', () => {
+  // cover 在 16:10(最常見筆電比例)會裁掉設計空間 x<64 與 x>1216;8 鍵須全落在此帶內。
+  const SAFE_L = 64;
+  const SAFE_R = 1216;
+  for (const mode of ['row', 'thirds']) {
+    it(`${mode}:8 鍵、每鍵左右緣 ∈ [${SAFE_L}, ${SAFE_R}]`, () => {
+      const kb = melodyGeom(mode);
+      expect(kb.layout.length).toBe(8); // 含高八度 C
+      for (let i = 0; i < kb.layout.length; i++) {
+        const r = keyRect(i, kb);
+        expect(r.x).toBeGreaterThanOrEqual(SAFE_L);
+        expect(r.x + r.w).toBeLessThanOrEqual(SAFE_R);
+        expect(r.x).toBeGreaterThan(640 - r.w); // 主體仍在中線 640 右側(分盤歸右手)
+      }
+    });
+  }
 });
 
 describe('coordinateMapper — reset', () => {

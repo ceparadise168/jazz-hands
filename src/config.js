@@ -118,18 +118,19 @@ export const DISKS = {
  *  - thirds(2D 三度排列,預設):上排 C E G B、下排錯半格 D F A → 相鄰/三度移動不經過其他鍵;方塊大。
  *  - row(單排鍵盤排列):C..B 由左到右一排;直覺,但相鄰移動會經過中間音。
  * 各 mode 提供 layout(每音 row/col)+ 幾何(originX/colStep/rowOffsetX/topY/rowStep/padW/padH)。
- * 共用:cx(分盤中心,須在中線 640 右側)、keys、keyColors(C..B 彩虹)、色/角色/標籤。
+ * 共用:cx(分盤中心,須在中線 640 右側)、keys、keyColors(C..B + 高八度 C 彩虹)、色/角色/標籤。
  */
 export const KEYBOARD = {
   cx: 920, // 區域中心(分盤用;兩種排列都在中線 640 右側)
-  keys: 7, // C D E F G A B(index 0..6)
-  keyColors: ['#ff5a5a', '#ff9f43', '#ffd93d', '#4cd964', '#4d8cff', '#7b6cff', '#c061ff'], // 紅橙黃綠藍靛紫
+  keys: 8, // C D E F G A B + 高八度 C(index 0..7);第 8 鍵 = 上主音,完成整個八度
+  // 紅橙黃綠藍靛紫 + 深紅(高八度 C:同 C 的紅色系、刻意更深以示「高一個八度」)。
+  keyColors: ['#ff5a5a', '#ff9f43', '#ffd93d', '#4cd964', '#4d8cff', '#7b6cff', '#c061ff', '#b3122b'],
   color: COLORS.melody,
   role: 'melody',
   hubLabel: 'MELODY',
   defaultMode: 'row', // 預設「鍵盤」單排;三度 / 披薩 可由 UI 切換
   modes: {
-    // 2D 三度排列:上排 C E G B(0,2,4,6)、下排錯半格 D F A(1,3,5)
+    // 2D 三度排列:上排 C E G B(0,2,4,6)、下排錯半格 D F A + 高八度 C(1,3,5,7)
     thirds: {
       kind: 'pads', // in-shape pad 群(keyboard machine + dwell)
       layout: [
@@ -140,16 +141,17 @@ export const KEYBOARD = {
         { row: 0, col: 2 }, // G
         { row: 1, col: 2 }, // A
         { row: 0, col: 3 }, // B
+        { row: 1, col: 3 }, // C(高八度;接續 brick,落在 B 下方、A 右側)
       ],
       originX: 660,
-      colStep: 145, // pad 96 + 空隙 49
-      rowOffsetX: 72, // 半欄錯位 brick
+      colStep: 126, // pad 96 + 空隙 30(8 鍵後略收窄,使最右鍵留在 16:10 安全區內)
+      rowOffsetX: 63, // 半欄錯位 brick(= colStep/2)
       topY: 250,
       rowStep: 150, // pad 96 + 垂直空隙 54
       padW: 96,
       padH: 96,
     },
-    // 單排鍵盤排列:C..B 由左到右(全 row 0)
+    // 單排鍵盤排列:C..B + 高八度 C 由左到右(全 row 0)
     row: {
       kind: 'pads',
       layout: [
@@ -160,13 +162,14 @@ export const KEYBOARD = {
         { row: 0, col: 4 }, // G
         { row: 0, col: 5 }, // A
         { row: 0, col: 6 }, // B
+        { row: 0, col: 7 }, // C(高八度)
       ],
-      originX: 656,
-      colStep: 80, // pad 56 + 空隙 24
+      originX: 642, // 8 鍵置中於 cx≈920(642..1198,左右皆在 16:10 安全區內)
+      colStep: 72, // pad 52 + 空隙 20
       rowOffsetX: 0,
       topY: 300,
       rowStep: 0,
-      padW: 56,
+      padW: 52,
       padH: 150, // 直立鍵
     },
     // 披薩圓盤:跟和弦盤一樣的扇形 + 中心休息區(用 createDiskMachine,而非 pad in-shape)
@@ -176,7 +179,7 @@ export const KEYBOARD = {
       cy: 380,
       rOut: 210,
       rIn: 73.5, // = rOut × 0.35(與和弦盤同死區比例)
-      slots: 7, // C D E F G A B
+      slots: 8, // C D E F G A B + 高八度 C(8 等分扇形)
     },
   },
 };

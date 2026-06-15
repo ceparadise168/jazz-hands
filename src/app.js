@@ -107,7 +107,7 @@ export function createApp(deps) {
     for (let k = 0; k < SLOTS; k++) {
       chordLabels.push(musicEngine.chordForSlot(k).name);
     }
-    // melody 為單排 7 鍵(C..B);標籤去掉科學音高的八度數字,如 C4 → C。
+    // melody 為 8 鍵(C..B + 高八度 C);標籤去掉科學音高的八度數字,如 C4/C5 → C。
     for (let k = 0; k < KEYBOARD.keys; k++) {
       melodyLabels.push(musicEngine.noteForSlot(k).name.replace(/-?\d+$/, ''));
     }
